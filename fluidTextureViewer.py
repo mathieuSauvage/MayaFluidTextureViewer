@@ -2,13 +2,7 @@ import pymel.core as pm
 
 #TODO
 '''
-Placer le fluid sous le control 
-Creer une vizualisation de la taille du fluid original
-checker why Reso Mult change la size....
-Creer un sous Grp avec les coordonnees de Texture rotation et scale
-Creer un sous Grp translate qui est contraont au fluid translate
-additioner ces valeurs de translate aux valeur du pos origin
-
+Change the transformOnSlimAxis global system
 '''
 class FTV_msCommandException(Exception):
     def __init__(self,message):
