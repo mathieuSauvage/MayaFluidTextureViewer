@@ -2,7 +2,7 @@ import pymel.core as pm
 
 #TODO
 '''
-Change the transformOnSlimAxis global system
+change the ruler, as a transformation under the controller, so it can be moved around and rotated, and make it's dependency on texture rotate activable with a toggle
 '''
 class FTV_msCommandException(Exception):
     def __init__(self,message):
@@ -77,6 +77,9 @@ def FTV_createFluidDummy( name ):
 	fldShape.addAttr('textureDefaultRotateX', dv=0.0)
 	fldShape.addAttr('textureDefaultRotateY', dv=0.0)
 	fldShape.addAttr('textureDefaultRotateZ', dv=0.0)
+
+	fldShape.addAttr('textureDefaultImplode', dv=0.0)
+	fldShape.addAttr('textureDefaultTextureTime', dv=0.0)
 	
 
 	pm.expression( s='float $res[];\n\nfloat $size[];\n\n\n\n$res[0] = resoXOrig * resoMult;\n\n$res[1] = resoYOrig * resoMult;\n\n$res[2] = resoZOrig * resoMult;\n\n\n\n$size[0] = sizeXOrig;\n\n$size[1] = sizeYOrig;\n\n$size[2] = sizeZOrig;\n\n\n\nfloat $ratio = $res[0] / $size[0];\nfloat $rezoSlim = resoSlim;\n\n\nif ( slimAxis != 3 )\n{\n\tif (($rezoSlim%2) != ( $res[int(slimAxis)] % 2 ))\n\t\t$rezoSlim += 1;\n\n\t$size[int(slimAxis)] = $rezoSlim/$ratio;\n\n\t$res[int(slimAxis)] = $rezoSlim;\n}\n\n\n\nresolutionW = $res[0];\n\nresolutionH = $res[1];\n\nresolutionD = $res[2];\n\n\ndimensionsW = $size[0];\ndimensionsH = $size[1];\ndimensionsD = $size[2];', o=fldShape, ae=True, uc=all)
@@ -85,7 +88,7 @@ def FTV_createFluidDummy( name ):
 	fldShape = shps[0]
 	return (fldTrans,fldShape)
 
-def FTV_connectFluidToTexture( fluidSource, vizuFluid ):
+def FTV_setDirectConnectionsFluidToTexture( fluidSource, vizuFluid ):
 	pm.connectAttr ( fluidSource+'.resolutionW', vizuFluid+'.resoXOrig' )
 	pm.connectAttr ( fluidSource+'.resolutionH', vizuFluid+'.resoYOrig' )
 	pm.connectAttr ( fluidSource+'.resolutionD', vizuFluid+'.resoZOrig' )
@@ -154,14 +157,16 @@ def FTV_createValueToggle( attributeView, offAttributes, onAttributes):
 	pm.connectAttr(attributeView, condOnOff+'.firstTerm')
 	pm.setAttr( condOnOff+'.secondTerm',1)
 	pm.connectAttr(offAttributes[0],condOnOff+'.colorIfFalseR')
-	pm.connectAttr(offAttributes[1],condOnOff+'.colorIfFalseG')
-	pm.connectAttr(offAttributes[2],condOnOff+'.colorIfFalseB')
-
 	pm.connectAttr(onAttributes[0],condOnOff+'.colorIfTrueR')
-	pm.connectAttr(onAttributes[1],condOnOff+'.colorIfTrueG')
-	pm.connectAttr(onAttributes[2],condOnOff+'.colorIfTrueB')
 
-	return [condOnOff+'.outColorR', condOnOff+'.outColorG', condOnOff+'.outColorB']
+	if len(offAttributes)>1:
+		pm.connectAttr(offAttributes[1],condOnOff+'.colorIfFalseG')
+		pm.connectAttr(offAttributes[2],condOnOff+'.colorIfFalseB')
+		pm.connectAttr(onAttributes[1],condOnOff+'.colorIfTrueG')
+		pm.connectAttr(onAttributes[2],condOnOff+'.colorIfTrueB')
+		return [condOnOff+'.outColorR', condOnOff+'.outColorG', condOnOff+'.outColorB']
+
+	return condOnOff+'.outColorR'
 
 def createSlimAxisTest( name, choosenAxisAtt, axisNum, attIfAxis, attIfNotAxis ):
 	condSlimAxisIsAxisNum = pm.createNode('condition',n=name+'#') #translateValueIfSlimAxisX
@@ -192,10 +197,23 @@ def FTV_createValueVectorWithSlimCond( transformationName, slimAxisChooserAtt, a
 	return [condIsSlim+'.outColorR', condIsSlim+'.outColorG', condIsSlim+'.outColorB']
 
 
-def FTV_createSourceTextureSpace(vizuFluidTrans, vizuFluidShape, fluidSourceShape):
+def FTV_setupVizuTextureSpaceAndAttributes(vizuFluidTrans, vizuFluidShape, fluidSourceShape):
+
+#to convert fluid texture values to 3D space, we need to multiply them by 80/freq
 	gpTextureSpace = pm.group(em=True, n='textureSpace#')
 
-# Dealing with Texture Scale
+	multTextSpaceScale = pm.createNode('multiplyDivide',n='textureTo3DSpaceConstantConvert#')
+	pm.setAttr(multTextSpaceScale+'.input1X', 80)
+	pm.connectAttr(fluidSourceShape+'.frequency',multTextSpaceScale+'.input2X')
+	pm.setAttr(multTextSpaceScale+'.operation',2)
+	textureSpaceTo3DMultiplicator = multTextSpaceScale+'.outputX'
+	pm.connectAttr( textureSpaceTo3DMultiplicator, gpTextureSpace+'.scaleX')
+	pm.connectAttr( textureSpaceTo3DMultiplicator, gpTextureSpace+'.scaleY')
+	pm.connectAttr( textureSpaceTo3DMultiplicator, gpTextureSpace+'.scaleZ')
+
+# Dealing with texture Scale And Rotate
+	gpTextureRotateScale = pm.group(em=True, n='textureRotateAndScale#')
+
 	# Texture Scale, first we may want to view the texture Scale except on the slim Axis for clearer viewing purpose (this is toggle by 'textureScaleOnSlimAxis'),
 	# so we have to deal with all axis combinaisons, then we deal with a global toggle viewTextureScale between previous calculated values and the default values
 	sourceScaleAtts = [fluidSourceShape+'.textureScaleX',fluidSourceShape+'.textureScaleY',fluidSourceShape+'.textureScaleZ']
@@ -204,102 +222,106 @@ def FTV_createSourceTextureSpace(vizuFluidTrans, vizuFluidShape, fluidSourceShap
 	vectorValueIfScaleOnSlim = FTV_createValueVectorWithSlimCond('scale',vizuFluidShape+'.slimAxis',vizuFluidShape+'.textureScaleOnSlimAxis',sourceScaleAtts,defaultScaleAtts,True )
 	outTextureScale = FTV_createValueToggle(vizuFluidShape+'.viewTextureScale',defaultScaleAtts,vectorValueIfScaleOnSlim)
 
-	#to convert fluid texture scale value to 3D space, we need to multiply them by 80/freq
-	multTextSpaceScale = pm.createNode('multiplyDivide',n='textureTo3DSpaceConstantConvert#')
-	pm.setAttr(multTextSpaceScale+'.input1X', 80)
-	pm.connectAttr(fluidSourceShape+'.frequency',multTextSpaceScale+'.input2X')
-	pm.setAttr(multTextSpaceScale+'.operation',2)
-	textureSpaceTo3DMultiplicator = multTextSpaceScale+'.outputX'
+	pm.connectAttr( outTextureScale[0], gpTextureRotateScale+'.scaleX')
+	pm.connectAttr( outTextureScale[1], gpTextureRotateScale+'.scaleY')
+	pm.connectAttr( outTextureScale[2], gpTextureRotateScale+'.scaleZ')
 
-	multDiv = pm.createNode('multiplyDivide',n='wantedTextureScaleTo3DSpace#')
-	pm.setAttr( multDiv+'.operation', 1 )
-	pm.connectAttr( textureSpaceTo3DMultiplicator, multDiv+'.input1X')
-	pm.connectAttr( textureSpaceTo3DMultiplicator, multDiv+'.input1Y')
-	pm.connectAttr( textureSpaceTo3DMultiplicator, multDiv+'.input1Z')
-	pm.connectAttr( outTextureScale[0], multDiv+'.input2X')
-	pm.connectAttr( outTextureScale[1], multDiv+'.input2Y')
-	pm.connectAttr( outTextureScale[2], multDiv+'.input2Z')
-	pm.connectAttr( multDiv+'.outputX', gpTextureSpace+'.sx')
-	pm.connectAttr( multDiv+'.outputY', gpTextureSpace+'.sy')
-	pm.connectAttr( multDiv+'.outputZ', gpTextureSpace+'.sz')
-
-# Dealing with Texture Rotate
-
+	# Texture Rotate
 	# Texture Rotate, is a bit more simple, we just use viewTextureRotate to toggle between source Fluid Rotate or default Rotate values on Controller
 	# Trying to reduce the rotation to view them in a plane doesn't provide a good representative information about the source rotation to make an animation for example
-	gpRotTextureSpace = pm.group(em=True,n='textureSpaceRotate#')
-	pm.parent(gpRotTextureSpace,gpTextureSpace,r=True)
+
 	sourceRotateAtts = [fluidSourceShape+'.textureRotateX',fluidSourceShape+'.textureRotateY',fluidSourceShape+'.textureRotateZ']
 	defaultRotateAtts = [vizuFluidShape+'.textureDefaultRotateX',vizuFluidShape+'.textureDefaultRotateY',vizuFluidShape+'.textureDefaultRotateZ']
 	outTextureRotate = FTV_createValueToggle(vizuFluidShape+'.viewTextureRotate',defaultRotateAtts, sourceRotateAtts)
-	pm.connectAttr(outTextureRotate[0], gpRotTextureSpace+'.rotateX')
-	pm.connectAttr(outTextureRotate[1], gpRotTextureSpace+'.rotateY')
-	pm.connectAttr(outTextureRotate[2], gpRotTextureSpace+'.rotateZ')
+	pm.connectAttr(outTextureRotate[0], gpTextureRotateScale+'.rotateX')
+	pm.connectAttr(outTextureRotate[1], gpTextureRotateScale+'.rotateY')
+	pm.connectAttr(outTextureRotate[2], gpTextureRotateScale+'.rotateZ')
+
+	pm.parent(gpTextureRotateScale,gpTextureSpace,r=True)
 
 # Dealing with Texture Origin
 
+	locOrigin = pm.spaceLocator(n='fluidTextureOrigin#')
+	pm.parent( locOrigin , gpTextureRotateScale, r=True)
+
+	sourceTranslateAtts = [fluidSourceShape+'.textureOriginX',fluidSourceShape+'.textureOriginY',fluidSourceShape+'.textureOriginZ']
+	defaultTranslateAtts = [vizuFluidShape+'.textureDefaultOriginX',vizuFluidShape+'.textureDefaultOriginY',vizuFluidShape+'.textureDefaultOriginZ']
+	
+	vectorValueIfTranslateOnSlim = FTV_createValueVectorWithSlimCond('translate',vizuFluidShape+'.slimAxis',vizuFluidShape+'.textureTranslateOnSlimAxis',sourceTranslateAtts,defaultTranslateAtts,True )
+	outSourceTextureOrigin = FTV_createValueToggle(vizuFluidShape+'.viewTextureOrigin',defaultTranslateAtts,vectorValueIfTranslateOnSlim)
+	pm.connectAttr(outSourceTextureOrigin[0], locOrigin+'.tx')
+	pm.connectAttr(outSourceTextureOrigin[1], locOrigin+'.ty')
+	pm.connectAttr(outSourceTextureOrigin[2], locOrigin+'.tz')
+
+
+	# potential texture offset due to a translate of the texture Viewer
 	# this locator position will be the offset in texture origin due to the vizualiser position, so it will be added anyway to the final result
 	loc = pm.spaceLocator(n='offsetOriginTexture#')
 	pm.pointConstraint(vizuFluidTrans, loc)
-	pm.parent( loc , gpRotTextureSpace, r=True)
+	pm.parent( loc , gpTextureRotateScale, r=True)
 
-	# locSource is the actual origin of the source fluid texture, and locDefault will represent the default origin values choosen for vizu
-	locSource = pm.spaceLocator(n='sourceFluidOrigin#')
-	pm.connectAttr(fluidSourceShape+'.textureOriginX', locSource+'.tx')
-	pm.connectAttr(fluidSourceShape+'.textureOriginY', locSource+'.ty')
-	pm.connectAttr(fluidSourceShape+'.textureOriginZ', locSource+'.tz')
-	pm.parent( locSource , gpRotTextureSpace, r=True)
-
-	locDefault = pm.spaceLocator(n='defaultOrigin#')
-	pm.connectAttr(vizuFluidShape+'.textureDefaultOriginX', locDefault+'.tx')
-	pm.connectAttr(vizuFluidShape+'.textureDefaultOriginY', locDefault+'.ty')
-	pm.connectAttr(vizuFluidShape+'.textureDefaultOriginZ', locDefault+'.tz')
-	pm.parent( locDefault , gpRotTextureSpace, r=True)
-
-	# then because we are dealing with the vizualizer and the slim Axis is choosen before rotate we need to convert this in non-rotated texture space (we need also to convert the default chosen for textureOrigin)
-	locSourceNonRotated = pm.spaceLocator(n='sourceFluidOriginNonRotated#')
-	pm.parent( locSourceNonRotated , gpTextureSpace, r=True)
-	pm.pointConstraint(locSource,locSourceNonRotated)
-	locDefaultNonRotated = pm.spaceLocator(n='defaultOriginNonRotated#')
-	pm.parent( locDefaultNonRotated , gpTextureSpace, r=True)
-	pm.pointConstraint(locDefault,locDefaultNonRotated)
-
-	# and remove the coordinate according to slimAxis choice
-	locInVizuPlan = pm.spaceLocator(n='sourceFluidNonRotatedOriginInVizuPlan#')
-	pm.parent( locInVizuPlan , gpTextureSpace, r=True)
-
-	sourceTranslateAtts = [locSourceNonRotated+'.tx',locSourceNonRotated+'.ty',locSourceNonRotated+'.tz']
-	defaultTranslateAtts = [locDefaultNonRotated+'.tx',locDefaultNonRotated+'.ty',locDefaultNonRotated+'.tz']
-	
-	vectorValueIfTranslateOnSlim = FTV_createValueVectorWithSlimCond('translate',vizuFluidShape+'.slimAxis',vizuFluidShape+'.textureTranslateOnSlimAxis',sourceTranslateAtts,defaultTranslateAtts,True )
-	outTextureOriginNonRotated = FTV_createValueToggle(vizuFluidShape+'.viewTextureOrigin',defaultTranslateAtts,vectorValueIfTranslateOnSlim)
-	pm.connectAttr(outTextureOriginNonRotated[0], locInVizuPlan+'.tx')
-	pm.connectAttr(outTextureOriginNonRotated[1], locInVizuPlan+'.ty')
-	pm.connectAttr(outTextureOriginNonRotated[2], locInVizuPlan+'.tz')
-
-	# and we translate this back to the rotated space of the texture
-	locFinalVizuOrigin = pm.spaceLocator(n='finalVizuOriginTexture#')
-	pm.parent( locFinalVizuOrigin , gpRotTextureSpace, r=True)
-	pm.pointConstraint(locInVizuPlan,locFinalVizuOrigin)
-
-	#then add this to the Vizualizer offset
-	minus = pm.createNode('plusMinusAverage',n='VizuPosOffsetMinusFinalTextureOrigin#')
+	#then add this to the texture Origin
+	minus = pm.createNode('plusMinusAverage',n='VizuPosOffsetMinusTextureOrigin#')
 	pm.connectAttr(loc+'.translate',minus+'.input3D[0]')
-	pm.connectAttr(locFinalVizuOrigin+'.translate',minus+'.input3D[1]')
+	pm.connectAttr(locOrigin+'.translate',minus+'.input3D[1]')
 	pm.setAttr( minus+'.operation', 1)
+	outFinalTextureOrigin = [ minus+'.output3Dx',minus+'.output3Dy',minus+'.output3Dz' ]
 
-# Here we reconnect all the values to VizuFluid
+# And we are going to create a group controlled by the texture rotation to be the parent of the vizualizer
+	gpRotateTextureVizualizer = pm.group(em=True, n='textureVizualizerRotate#')
+
+# Then we need also to recreate the implode space
+# Implode space take the texture Rotate and also a special scale of 5
+# We are going to translate the visualizer Pos into his space to offset correctly the value of the Implode Position
+	gpImplodeSpace = pm.group(em=True, n='textureImplodeSpace#')
+	pm.setAttr(gpImplodeSpace+'.sx',5)
+	pm.setAttr(gpImplodeSpace+'.sy',5)
+	pm.setAttr(gpImplodeSpace+'.sz',5)
+	locImplOffset = pm.spaceLocator(n='offsetImplode#')
+	pm.pointConstraint(vizuFluidTrans, locImplOffset)
+	pm.parent( locImplOffset , gpImplodeSpace, r=True)
+
+	minusImpl = pm.createNode('plusMinusAverage',n='VizuImplOffsetMinusSourceImplode#')
+	pm.connectAttr(fluidSourceShape+'.implodeCenter',minusImpl+'.input3D[0]')
+	pm.connectAttr(locImplOffset+'.translate',minusImpl+'.input3D[1]')
+	pm.setAttr( minusImpl+'.operation', 2) # SUB
+	outFinalImplodeCenter = [ minusImpl+'.output3Dx',minusImpl+'.output3Dy',minusImpl+'.output3Dz' ]
+
+	#we also create the on/off for implode
+	outImplode = FTV_createValueToggle(vizuFluidShape+'.viewImplode',[vizuFluidShape+'.textureDefaultImplode'], [fluidSourceShape+'.implode'])
+
+# we also create a toggle for texture time
+	outTextureTime = FTV_createValueToggle(vizuFluidShape+'.viewTextureTime',[vizuFluidShape+'.textureDefaultTextureTime'], [fluidSourceShape+'.textureTime'])
+
+
+# Finally, here, we reconnect all the values to VizuFluid, or the parent of vizufluid
 	pm.connectAttr( outTextureScale[0], vizuFluidShape+'.textureScaleX')
 	pm.connectAttr( outTextureScale[1], vizuFluidShape+'.textureScaleY')
 	pm.connectAttr( outTextureScale[2], vizuFluidShape+'.textureScaleZ')
-	pm.connectAttr( outTextureRotate[0], vizuFluidShape+'.textureRotateX')
-	pm.connectAttr( outTextureRotate[1], vizuFluidShape+'.textureRotateY')
-	pm.connectAttr( outTextureRotate[2], vizuFluidShape+'.textureRotateZ')
-	pm.connectAttr( minus+'.output3Dx', vizuFluidShape+'.textureOriginX')
-	pm.connectAttr( minus+'.output3Dy', vizuFluidShape+'.textureOriginY')
-	pm.connectAttr( minus+'.output3Dz', vizuFluidShape+'.textureOriginZ')
 
-	return gpTextureSpace
+	pm.connectAttr( outTextureRotate[0], gpRotateTextureVizualizer+'.rotateX')
+	pm.connectAttr( outTextureRotate[1], gpRotateTextureVizualizer+'.rotateY')
+	pm.connectAttr( outTextureRotate[2], gpRotateTextureVizualizer+'.rotateZ')
+
+	pm.connectAttr( outTextureRotate[0], gpImplodeSpace+'.rotateX')
+	pm.connectAttr( outTextureRotate[1], gpImplodeSpace+'.rotateY')
+	pm.connectAttr( outTextureRotate[2], gpImplodeSpace+'.rotateZ')
+
+	pm.connectAttr( outFinalTextureOrigin[0], vizuFluidShape+'.textureOriginX')
+	pm.connectAttr( outFinalTextureOrigin[1], vizuFluidShape+'.textureOriginY')
+	pm.connectAttr( outFinalTextureOrigin[2], vizuFluidShape+'.textureOriginZ')
+
+	pm.connectAttr( outFinalImplodeCenter[0], vizuFluidShape+'.implodeCenterX')
+	pm.connectAttr( outFinalImplodeCenter[1], vizuFluidShape+'.implodeCenterY')
+	pm.connectAttr( outFinalImplodeCenter[2], vizuFluidShape+'.implodeCenterZ')
+
+	# connect the implode
+	pm.connectAttr(outImplode, vizuFluidShape+'.implode')
+
+	#connect the textureTime
+	pm.connectAttr(outTextureTime, vizuFluidShape+'.textureTime')
+
+	return gpTextureSpace, gpRotateTextureVizualizer, gpImplodeSpace
 
 
 def FTV_multiConnect(src, dest, atts):
@@ -320,18 +342,24 @@ def FTV_setupMainControlAttributes( control, vizuFluidShape ):
 	FTV_multiConnect( control, vizuFluidShape, ['resoMult','slimAxis','resoSlim','viewImplode','viewTextureTime','textureTranslateOnSlimAxis','textureScaleOnSlimAxis','viewTextureScale','viewTextureRotate','viewTextureOrigin'])
 
 def FTV_createFluidTextureVizualizer( fluid ):
-	fluidSourceTrans,fluidSourceShape = FTV_getFluidElements( fluid )
-	vizuFluidTrans, vizuFluidShape  = FTV_createFluidDummy( fluidSourceTrans+'_textVizu#' )
 
-	FTV_connectFluidToTexture( fluidSourceShape, vizuFluidShape)
+	fluidSourceTrans, fluidSourceShape = FTV_getFluidElements( fluid )
+	vizuFluidTrans  , vizuFluidShape   = FTV_createFluidDummy( fluidSourceTrans+'_textVizu#' )
+
+	FTV_setDirectConnectionsFluidToTexture( fluidSourceShape, vizuFluidShape)
+
 	fluidSpaceTransform = FTV_generateFluidSpaceGrp( 'fldTextSpace#', (fluidSourceTrans,fluidSourceShape))
 
 	mainCtrl = FTV_createMainFluidTextViewControl( vizuFluidTrans,vizuFluidShape, fluidSpaceTransform )
-	pm.parent(vizuFluidTrans,mainCtrl,r=True)
 	FTV_setupMainControlAttributes( mainCtrl, vizuFluidShape )
 
-	gpTextureSpace = FTV_createSourceTextureSpace( vizuFluidTrans, vizuFluidShape, fluidSourceShape )
+	gpTextureSpace, gpFluidVizuParent, gpImplodeSpace = FTV_setupVizuTextureSpaceAndAttributes( vizuFluidTrans, vizuFluidShape, fluidSourceShape )
 	pm.parent(gpTextureSpace,mainCtrl,r=True)
+	pm.parent(gpImplodeSpace,mainCtrl,r=True)
+	pm.parent(gpFluidVizuParent,mainCtrl,r=True)
+	pm.parent(vizuFluidTrans,gpFluidVizuParent,r=True)
+
+	return mainCtrl, vizuFluidTrans
 
 if __name__ == "__main__":
 	try:
