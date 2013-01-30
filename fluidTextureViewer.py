@@ -2,8 +2,7 @@ import pymel.core as pm
 
 #TODO
 '''
-change the ruler, as a transformation under the controller, so it can be moved around and rotated, and make it's dependency on texture rotate activable with a toggle
-and it's done
+Maybe force a refresh system for the vizualiser depending on all the attributes
 '''
 class FTV_msCommandException(Exception):
     def __init__(self,message):
@@ -15,6 +14,14 @@ class FTV_msCommandException(Exception):
 def FTV_multiConnect(src, dest, atts):
 	for a in atts:
 		pm.connectAttr( src+'.'+a, dest+'.'+a)
+
+# connect every keyable and non locked attribute of src to dest (basically connect parameters from control)
+def FTV_multiConnectAutoKeyableNonLocked(src, dest, attsExcept):
+	atts = pm.listAttr(src, k=True, u=True)
+	for a in atts:
+		if a in attsExcept:
+			continue
+		pm.connectAttr(src+'.'+a, dest+'.'+a)
 
 def FTV_lockAndHide( obj, atts, keyable=False ):
 	for att in atts:
@@ -53,6 +60,8 @@ def addMainAttributesToObject( obj, keyable ):
 	obj.addAttr('displayFluidBounding', k=keyable,at='bool', dv=True)
 	obj.addAttr('vizualiserParameters',nn=line+' [vizualiser Parameters] ', k=keyable, at='enum', en=line+':')
 	pm.setAttr(obj+'.vizualiserParameters',l=True)
+	obj.addAttr('textureGain',k=keyable,dv=1.0)
+	obj.addAttr('textureOpacityPreviewGain',k=keyable,dv=.8)
 	obj.addAttr('slimAxis', k=keyable, at='enum', en='XAxis:YAxis:ZAxis:None:')
 	obj.addAttr('resoSlim', k=keyable,dv=3.0)
 	obj.addAttr('resoMult', k=keyable,dv=1.0,min=.001)
@@ -85,10 +94,16 @@ def FTV_createFluidDummy( name ):
 	fldShape = shps[0]
 
 	pm.setAttr(fldShape+'.velocityMethod', 0)
+	pm.setAttr(fldShape+'.velocityMethod', l=True)
 	pm.setAttr(fldShape+'.densityMethod', 3)
+	pm.setAttr(fldShape+'.densityMethod', l=True)
+	pm.setAttr(fldShape+'.temperatureMethod', l=True)
+	pm.setAttr(fldShape+'.fuelMethod', l=True)
+	
 	pm.setAttr(fldShape+'.opacityTexture', 1)
 	pm.setAttr(fldShape+'.selfShadowing', 1)
 	pm.setAttr(fldShape+'.boundaryDraw', 4)
+	pm.setAttr(fldShape+'.coordinateMethod', l=True)
 
 	pm.setAttr(fldShape+'.primaryVisibility', 0)
 	pm.setAttr(fldShape+'.receiveShadows', 0)
@@ -101,6 +116,12 @@ def FTV_createFluidDummy( name ):
 	fldShape.addAttr('resoYOrig', dv=10)
 	fldShape.addAttr('resoZOrig', dv=10)
 	addMainAttributesToObject(fldShape,False)
+
+	pm.connectAttr(fldShape+'.textureGain',fldShape+'.opacityTexGain')
+	pm.connectAttr(fldShape+'.textureGain',fldShape+'.colorTexGain')
+	pm.connectAttr(fldShape+'.textureGain',fldShape+'.incandTexGain')
+
+	pm.connectAttr(fldShape+'.textureOpacityPreviewGain',fldShape+'.opacityPreviewGain')
 	# expression that calculate the size and resolution for the vizualizer depending on slimAxis chosen and resolution multiplier etc...
 	pm.expression( s='float $res[];\n\nfloat $size[];\n\n\n\n$res[0] = resoXOrig * resoMult;\n\n$res[1] = resoYOrig * resoMult;\n\n$res[2] = resoZOrig * resoMult;\n\n\n\n$size[0] = sizeXOrig;\n\n$size[1] = sizeYOrig;\n\n$size[2] = sizeZOrig;\n\n\n\n\nfloat $rezoSlim = resoSlim;\nint $slimAxis = slimAxis;\n\nif ( $slimAxis != 3 )\n{\n\tfloat $ratio = $res[$slimAxis] / $size[$slimAxis];\n\tif (($rezoSlim%2) != ( $res[$slimAxis] % 2 ))\n\t\t$rezoSlim += 1;\n\n\t$size[$slimAxis] = $rezoSlim/$ratio;\n\n\t$res[$slimAxis] = $rezoSlim;\n}\n\n\n\nresolutionW = $res[0];\n\nresolutionH = $res[1];\n\nresolutionD = $res[2];\n\n\ndimensionsW = $size[0];\ndimensionsH = $size[1];\ndimensionsD = $size[2];', o=fldShape, ae=True, uc=all)
 	#lock of attributes
@@ -117,7 +138,7 @@ def FTV_setDirectConnectionsFluidToTexture( fluidSource, vizuFluid ):
 	pm.connectAttr ( fluidSource+'.dimensionsD', vizuFluid+'.sizeZOrig' )
 
 	# texture direct connections
-	directAtts = ['invertTexture','amplitude','ratio','threshold','depthMax','frequency','frequencyRatio','inflection','billowDensity','spottyness','sizeRand','randomness','falloff','numWaves']
+	directAtts = ['textureType','invertTexture','amplitude','ratio','threshold','depthMax','frequency','frequencyRatio','inflection','billowDensity','spottyness','sizeRand','randomness','falloff','numWaves']
 	for a in directAtts:
 		pm.connectAttr ( fluidSource+'.'+a, vizuFluid+'.'+a )
 
@@ -170,11 +191,13 @@ def FTV_createMainFluidTextViewControl( vizuFluidTrans, vizuFluidShape, fluidSpa
 	allCubeShapes = pm.listRelatives(cube,s=True)
 	pm.parent(allCubeShapes, circle, add=True, s=True)
 	pm.delete(cube)
+	pm.rename( allCubeShapes[0],'BBFluidShapeSrc#' )
+	retShape = pm.rename( allCubeShapes[1],'BBFluidShape#' )
 
 	FTV_lockAndHide(circle[0], ['rx','ry','rz','sx','sy','sz','v'])
 	pm.parent(grpDummyTransform,fluidSpaceTransform,r=True)
 
-	return circle[0], allCubeShapes[1]
+	return circle[0], retShape
 
 def FTV_createValueToggle( attributeView, offAttributes, onAttributes):
 	parts = attributeView.split('.')
@@ -358,7 +381,7 @@ def FTV_setupTextureSpacesAndAttributes(vizuFluidTrans, vizuFluidShape, fluidSou
 
 def FTV_setupMainControlAttributes( control, vizuFluidShape ):
 	addMainAttributesToObject(control,True)
-	FTV_multiConnect( control, vizuFluidShape, ['resoMult','slimAxis','resoSlim','viewImplode','viewTextureTime','applyOriginOnSlimAxis','applyScaleOnSlimAxis','viewTextureScale','viewTextureRotate','viewTextureOrigin'])
+	FTV_multiConnectAutoKeyableNonLocked( control, vizuFluidShape, ['translateX','translateY','translateZ'])
 
 def FTV_createFluidTextureVizualizer( fluid ):
 
