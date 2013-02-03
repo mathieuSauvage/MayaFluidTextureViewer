@@ -1,13 +1,13 @@
 # Fluid Texture Viewer version 1.0
 
 This is a Maya python script that generate a rig to view the texture parameters
-from a fluid.
+of a fluid.
 All the Rig will exist under a group named *fluidTextureViewer#* in the world.
 So deleting this group will delete the entire rig.
 
 the main controller created is *fluidTextureViewerCtrl#*
 
-with the attributes:
+with these attributes:
 
 * **translate** the only transformation available, just so you can offset the
 position of the viewer in space to put it in a convenient place.
@@ -47,6 +47,16 @@ space values.
 
 * after that come all the default values used by the viewer when the view of a parameter is
 disabled
+
+## Why?
+
+I found it often difficult to visualize the texture of a fluid in Maya and this script
+try to give you an idea of it by creating another fluid focused only on the texture. And you can also
+disable some parameters if you want to clearly animate some others without changing anything
+on the source fluid. For example if you want to see the effect of your translation
+animation of the texture origin but you have at the same time a strong implode that distort everything : you just disable
+implode in the viewer and you can see clearly your origin animation. You can translate the viewer fluid, it
+will translate the texture slice correctly so you are not stuck with a visualization of the center of your fluid
 
 ## Usage in Maya
 
