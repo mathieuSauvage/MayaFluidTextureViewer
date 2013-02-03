@@ -1,6 +1,6 @@
 '''
 ================================================================================
-* VERSION : 1.0
+* VERSION 1.0
 ================================================================================
 * AUTHOR:
 Mathieu Sauvage mathieu@hiddenforest.fr
@@ -16,10 +16,8 @@ This is a Maya python script that generate a rig to view the texture parameters
 from a fluid. Please see the full description at the INTERNET SOURCE.
 ================================================================================
 * USAGE:
-
 - select a fluid then copy/paste this into a Maya python script editor and
 execute it.
-
 - put the script into a python script folder that Maya know, then use an import
 command to use the script and call the main function with appropriate parameters.  
 ================================================================================
