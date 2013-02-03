@@ -11,10 +11,6 @@ class FTV_msCommandException(Exception):
     def __str__(self):
         return self.message
 
-def FTV_multiConnect(src, dest, atts):
-	for a in atts:
-		pm.connectAttr( src+'.'+a, dest+'.'+a)
-
 # connect every keyable and non locked attribute of src to dest (basically connect parameters from control)
 def FTV_multiConnectAutoKeyableNonLocked(src, dest, attsExcept):
 	atts = pm.listAttr(src, k=True, u=True)
