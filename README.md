@@ -60,13 +60,13 @@ will translate the texture slice correctly so you are not stuck with a visualiza
 
 ## Usage in Maya
 
-* select a fluid then copy/paste this into a Maya python script editor and
+2 ways:
+* select a fluid, then copy/paste this into a Maya python script editor and
 execute it.
-
 * put the script into a python script folder which path is known by Maya, then use an import
 command to use the script and call the main function with appropriate parameters.
 
-## Main Function to call?
+## Main function to call?
 
 FTV_createFluidTextureViewer( fluid )
 
