@@ -24,6 +24,7 @@ execute it.
 command to use the script and call the main function with appropriate parameters.  
 ================================================================================
 * TODO:
+maybe add something to force the refresh of the Viewer fluid
 ================================================================================
 '''
 
