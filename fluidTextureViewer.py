@@ -1,9 +1,79 @@
+'''
+================================================================================
+* VERSION : 1.0
+================================================================================
+* AUTHOR:
+Mathieu Sauvage mathieu@hiddenforest.fr
+================================================================================
+* MAIN FUNCTION:
+FTV_createFluidTextureViewer( fluid )
+================================================================================
+* DESCRIPTION:
+This is a Maya python script that generate a rig to view the texture parameters
+from a fluid.
+All the Rig will exist under a group named "fluidTextureVizualiser#" in the world.
+So deleting this group will delete the entire rig.
+
+the main controller created is fluidTextureViewerCtrl#
+
+with the attributes:
+
+[translate] the only transformation available, just so you can offset the
+position of the viewer in space to put it where it's more convenient for you.
+
+[display Fluid Viewer] hide/display the viewer (fluid)
+
+[display Fluid bounding] hide/display the bounding box of the original fluid 
+(cosmetic)
+
+[view texture rotate],[view texture scale],[view texture origin],[view implode], 
+[view texture time]
+for all these parameters, if "on" then the source fluid texture parameter will
+be used by the viewer. if "off" then the viewer will use the corresponding
+default value.
+
+[texture gain] the viewer fluid texture gains (opacity)
+
+[texture opacity preview gain] maya fluid display opacity preview gain of the
+viewer fluid.
+
+[slim Axis] the axis along which the fluid viewer size is reduced for viewing
+purpose.
+
+[reso Slim] All axis of the viewer fluid have the same resolution as the source
+fluid, except the slim Axis which will use this resolution. This parameter will
+change the size of the slice.
+
+[reso mult] the resolution of the viewer fluid will be multiplied by this value
+
+[apply origin on slim Axis] if "off" then the origin texture values displayed
+will be limited to the plan of the slice. If "on" then the viewer show the full
+space values.
+
+[apply scale on slim Axis] if "off" then the scale texture values displayed
+will be limited to the plan of the slice. If "on" then the viewer show the full
+space values.
+
+then all the default values used by the viewer when the view of a parameter is
+disabled
+================================================================================
+* USAGE:
+
+* select a fluid then copy/paste this into a Maya python script editor and
+execute it.
+
+* put the script into a python script folder that Maya know, then use an import
+command to use the script and call the main function with appropriate parameters.  
+================================================================================
+* INTERNET SOURCE:
+https://github.com/mathieuSauvage/MayaFluidTextureViewer.git
+================================================================================
+* TODO:
+================================================================================
+'''
+
 import pymel.core as pm
 
-'''
-TODO
-Maybe force a refresh system for the vizualiser depending on all the attributes
-'''
 class FTV_msCommandException(Exception):
     def __init__(self,message):
         self.message = '[FTV] '+message
@@ -52,20 +122,20 @@ def addMainAttributesToObject( obj, keyable ):
 	line = '-------------'
 	obj.addAttr('display',nn=line+' [display] ', k=keyable, at='enum', en=line+':')
 	pm.setAttr(obj+'.display',l=True)
-	obj.addAttr('displayFluidVizualizer', k=keyable,at='bool', dv=True)
+	obj.addAttr('displayFluidViewer', k=keyable,at='bool', dv=True)
 	obj.addAttr('displayFluidBounding', k=keyable,at='bool', dv=True)
-	obj.addAttr('vizualiserParameters',nn=line+' [vizualiser Parameters] ', k=keyable, at='enum', en=line+':')
-	pm.setAttr(obj+'.vizualiserParameters',l=True)
+	obj.addAttr('viewTextureRotate', k=keyable,at='bool', dv=True)
+	obj.addAttr('viewTextureScale', k=keyable,at='bool', dv=True)
+	obj.addAttr('viewTextureOrigin', k=keyable,at='bool', dv=True)
+	obj.addAttr('viewImplode', k=keyable,at='bool', dv=True)
+	obj.addAttr('viewTextureTime', k=keyable,at='bool', dv=True)
+	obj.addAttr('viewerParameters',nn=line+' [viewer Parameters] ', k=keyable, at='enum', en=line+':')
+	pm.setAttr(obj+'.viewerParameters',l=True)
 	obj.addAttr('textureGain',k=keyable,dv=1.0)
 	obj.addAttr('textureOpacityPreviewGain',k=keyable,dv=.8)
 	obj.addAttr('slimAxis', k=keyable, at='enum', en='XAxis:YAxis:ZAxis:None:')
 	obj.addAttr('resoSlim', k=keyable,dv=3.0)
 	obj.addAttr('resoMult', k=keyable,dv=1.0,min=.001)
-	obj.addAttr('viewImplode', k=keyable,at='bool', dv=True)
-	obj.addAttr('viewTextureTime', k=keyable,at='bool', dv=True)
-	obj.addAttr('viewTextureScale', k=keyable,at='bool', dv=True)
-	obj.addAttr('viewTextureOrigin', k=keyable,at='bool', dv=True)
-	obj.addAttr('viewTextureRotate', k=keyable,at='bool', dv=True)
 	obj.addAttr('applyOriginOnSlimAxis', k=keyable,at='bool', dv=False)
 	obj.addAttr('applyScaleOnSlimAxis', k=keyable, at='bool', dv=False)
 	obj.addAttr('defautValues', nn=line+' [default Values if disable] ', k=keyable, at='enum', en=line+':')
@@ -165,7 +235,7 @@ def FTV_createTransformedGeometry( objSrc, outShapeAtt, inShapeAtt, sourceTransf
 	return destShape
 
 def FTV_createMainFluidTextViewControl( vizuFluidTrans, vizuFluidShape, fluidSpaceTransform):
-	circle = pm.circle( n='fluidTextureVizuCtrl#', c=(0,0,0), nr=(0,1,0), sw=360, r=1, ut=False,s=8, ch=False )
+	circle = pm.circle( n='fluidTextureViewerCtrl#', c=(0,0,0), nr=(0,1,0), sw=360, r=1, ut=False,s=8, ch=False )
 	pm.parent(circle[0],fluidSpaceTransform,r=True)
 
 	size = 0.5
@@ -329,7 +399,6 @@ def FTV_setupTextureSpacesAndAttributes(vizuFluidTrans, vizuFluidShape, fluidSou
 	FTV_lockAndHide( gpImplodeSpace, ['tx','ty','tz','v'])
 	FTV_lockAndHide( gpImplodeSpace, ['sx','sy','sz'], True)
 
-
 	minusImpl = pm.createNode('plusMinusAverage',n='VizuImplOffsetMinusSourceImplode#')
 	pm.connectAttr(fluidSourceShape+'.implodeCenter',minusImpl+'.input3D[0]')
 	pm.connectAttr(locImplOffset+'.translate',minusImpl+'.input3D[1]')
@@ -389,7 +458,7 @@ def FTV_createFluidTextureViewer( fluid ):
 	mainCtrl, bbNurbsCubeShape = FTV_createMainFluidTextViewControl( vizuFluidTrans,vizuFluidShape, fluidSpaceTransform )
 	FTV_setupMainControlAttributes( mainCtrl, vizuFluidShape )
 	pm.connectAttr( mainCtrl+'.displayFluidBounding',bbNurbsCubeShape+'.visibility' )
-	pm.connectAttr( mainCtrl+'.displayFluidVizualizer',vizuFluidTrans+'.visibility' )
+	pm.connectAttr( mainCtrl+'.displayFluidViewer',vizuFluidTrans+'.visibility' )
 
 	gpTextureSpace, gpFluidVizuParent, gpImplodeSpace = FTV_setupTextureSpacesAndAttributes( vizuFluidTrans, vizuFluidShape, fluidSourceShape )
 	pm.parent(gpTextureSpace,mainCtrl,r=True)
@@ -397,7 +466,7 @@ def FTV_createFluidTextureViewer( fluid ):
 	pm.parent(gpFluidVizuParent,mainCtrl,r=True)
 	pm.parent(vizuFluidTrans,gpFluidVizuParent,r=True)
 
-	rootVizuGroup = pm.group(em=True,n='fluidTextureVizualiser#')
+	rootVizuGroup = pm.group(em=True,n='fluidTextureViewer#')
 	FTV_lockAndHide(rootVizuGroup, ['tx','ty','tz','rx','ry','rz','sx','sy','sz','v'])
 
 	pm.parent(fluidSpaceTransform, rootVizuGroup,r=True)
