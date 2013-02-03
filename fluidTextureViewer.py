@@ -1,7 +1,7 @@
 import pymel.core as pm
 
-#TODO
 '''
+TODO
 Maybe force a refresh system for the vizualiser depending on all the attributes
 '''
 class FTV_msCommandException(Exception):
@@ -141,8 +141,6 @@ def FTV_setDirectConnectionsFluidToTexture( fluidSource, vizuFluid ):
 	directAtts = ['textureType','invertTexture','amplitude','ratio','threshold','depthMax','frequency','frequencyRatio','inflection','billowDensity','spottyness','sizeRand','randomness','falloff','numWaves']
 	for a in directAtts:
 		pm.connectAttr ( fluidSource+'.'+a, vizuFluid+'.'+a )
-
-	#pm.expression( s='textureType  = '+fluidSource+'.textureType ;\ninvertTexture = '+fluidSource+'.invertTexture;\namplitude = '+fluidSource+'.amplitude;\nratio = '+fluidSource+'.ratio;\nthreshold = '+fluidSource+'.threshold;\n\nfloat $scaleDefault[3] = {1.0,1.0,1.0};\nfloat $scale[3] = { $scaleDefault[0],$scaleDefault[1],$scaleDefault[2] };\n\nfloat $originDefault[3] = {0.0,0.0,0.0};\nfloat $origin[3] = { $originDefault[0],$originDefault[1],$originDefault[2] };\n\nfloat $rotateDefault[3] = {0.0,0.0,0.0};\nfloat $rotate[3] = { $rotateDefault[0],$rotateDefault[1],$rotateDefault[2] };\n\nfloat $defaultTextureTime = 0.0;\nfloat $defaultImplodeValue = 0.0;\n\nint $slimAxis = slimAxis;\n\n//------------------------ Texture Scale --------------------------\nif (viewTextureScale == 1)\n{\n\t$scale[0] = '+fluidSource+'.textureScaleX;\n\t$scale[1] = '+fluidSource+'.textureScaleY;\n\t$scale[2] = '+fluidSource+'.textureScaleZ;\n\tif (!applyOriginOnSlimAxis)\n\t\t$scale[$slimAxis] = $scaleDefault[$slimAxis];\n}\ntextureScaleX = $scale[0];\ntextureScaleY = $scale[1];\ntextureScaleZ = $scale[2];\n\n//------------------------ Texture Origin --------------------------\nif (viewTextureOrigin == 1)\n{\n\t$origin[0] = '+fluidSource+'.textureOriginX;\n\t$origin[1] = '+fluidSource+'.textureOriginY;\n\t$origin[2] = '+fluidSource+'.textureOriginZ;\n\tif (!applyOriginOnSlimAxis)\n\t\t$origin[$slimAxis] = $originDefault[$slimAxis];\n}\ntextureOriginX = $origin[0];\ntextureOriginY = $origin[1];\ntextureOriginZ = $origin[2];\n\n//------------------------ Texture Scale --------------------------\nif (viewTextureRotate == 1)\n{\n\t$rotate[0] = '+fluidSource+'.textureRotateX;\n\t$rotate[1] = '+fluidSource+'.textureRotateY;\n\t$rotate[2] = '+fluidSource+'.textureRotateZ;\n\tif (!applyOriginOnSlimAxis)\n\t\t$rotate[$slimAxis] = $rotateDefault[$slimAxis];\n}\ntextureRotateX = $rotate[0];\ntextureRotateY = $rotate[1];\ntextureRotateZ = $rotate[2];\n\ndepthMax = '+fluidSource+'.depthMax;\nfrequency = '+fluidSource+'.frequency;\nfrequencyRatio = '+fluidSource+'.frequencyRatio;\ninflection = '+fluidSource+'.inflection;\n\nif (viewTextureTime == 1)\n\ttextureTime = '+fluidSource+'.textureTime;\nelse\n\ttextureTime = $defaultTextureTime;\n\nbillowDensity = '+fluidSource+'.billowDensity;\nspottyness = '+fluidSource+'.spottyness;\nsizeRand = '+fluidSource+'.sizeRand;\nrandomness = '+fluidSource+'.randomness;\nfalloff = '+fluidSource+'.falloff;\nnumWaves = '+fluidSource+'.numWaves;\n\nif (viewImplode == 1)\n\timplode = '+fluidSource+'.implode;\nelse\n\timplode = $defaultImplodeValue;', o=vizuFluid, ae=True, uc=all)
 
 def FTV_generateFluidTransformSpaceGrp( name, fluidSourceData):
 	fluidSpaceTransform = pm.group( em=True, n=name )
@@ -383,7 +381,7 @@ def FTV_setupMainControlAttributes( control, vizuFluidShape ):
 	addMainAttributesToObject(control,True)
 	FTV_multiConnectAutoKeyableNonLocked( control, vizuFluidShape, ['translateX','translateY','translateZ'])
 
-def FTV_createFluidTextureVizualizer( fluid ):
+def FTV_createFluidTextureViewer( fluid ):
 
 	fluidSourceTrans, fluidSourceShape = FTV_getFluidElements( fluid )
 	vizuFluidTrans  , vizuFluidShape   = FTV_createFluidDummy( fluidSourceTrans+'_textVizu#' )
@@ -415,7 +413,7 @@ if __name__ == "__main__":
 		sel = pm.ls(sl=True)
 		if not len(sel):
 			raise FTV_msCommandException('Please select a fluid')
-		cmdResult = FTV_createFluidTextureVizualizer( sel[0])
+		cmdResult = FTV_createFluidTextureViewer( sel[0])
 		pm.select(cmdResult[0], r=True)
 	except FTV_msCommandException, e:
 		pm.mel.error( e.message)
