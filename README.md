@@ -59,6 +59,10 @@ implode in the viewer and you can see clearly your origin animation.
 
 You can translate the viewer fluid (the fluid object), it will translate the texture slice correctly so you are not stuck with a visualization of the center of your fluid
 
+## Intented way to use it
+
+After you cached the source fluid then you can focus on the texture animation of various parameters by playblasting the viewer.
+
 ## Usage in Maya
 
 2 ways:
@@ -66,11 +70,6 @@ You can translate the viewer fluid (the fluid object), it will translate the tex
 execute it.
 * put the script into a python script folder which path is known by Maya, then use an import
 command to use the script and call the main function with appropriate parameters.
-
-## Intented way to use it
-
-After you cached the source fluid then you focus on the texture animation by playblasting the viewer.
-
 
 ## Main function to call?
 
