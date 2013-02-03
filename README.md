@@ -51,7 +51,7 @@ disabled
 ## Why?
 
 I found it often difficult to visualize the texture of a fluid in Maya and this script
-try to give you an idea of it by creating another fluid focused only on the texture.
+try to provide a solution by creating another fluid focused only on the texture.
 
 And you can also disable some parameters if you want to clearly animate some others without changing anything
 on the source fluid. For example if you want to see the effect of your translation animation of the texture origin but you have at the same time a strong implode that distort everything : you just disable
@@ -77,7 +77,7 @@ After you cached the source fluid then you focus on the texture animation by pla
 FTV_createFluidTextureViewer( fluid )
 
 ## Contact
-For any reason, bugs, feedback, request or whatever, feel free to contact me
+feedback? bugs? request?... feel free to contact me
 mathieu@hiddenforest.fr
 
 
