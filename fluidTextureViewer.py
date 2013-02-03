@@ -401,7 +401,11 @@ def FTV_setupMainControlAttributes( control, vizuFluidShape ):
 	FTV_multiConnectAutoKeyableNonLocked( control, vizuFluidShape, ['translateX','translateY','translateZ'])
 
 def FTV_createFluidTextureViewer( fluid ):
-
+	'''
+	create a viewer of fluid texture
+	parameter fluid can be a fluid Transform or a fluidShape
+	return the main control, the transform of the fluid of the viewer, the parent group of the rig  
+	'''
 	fluidSourceTrans, fluidSourceShape = FTV_getFluidElements( fluid )
 	vizuFluidTrans  , vizuFluidShape   = FTV_createFluidDummy( fluidSourceTrans+'_textVizu#' )
 
