@@ -53,7 +53,7 @@ disabled
 * select a fluid then copy/paste this into a Maya python script editor and
 execute it.
 
-* put the script into a python script folder that Maya know, then use an import
+* put the script into a python script folder which path is known by Maya, then use an import
 command to use the script and call the main function with appropriate parameters.
 
 ## Main Function to call?
@@ -61,7 +61,7 @@ command to use the script and call the main function with appropriate parameters
 FTV_createFluidTextureViewer( fluid )
 
 ## Contact
-If you find bugs, want to give feedback or want something added to this script, feel free to contact me
+For any reason, bugs, feedback, request or whatever, feel free to contact me
 mathieu@hiddenforest.fr
 
 
