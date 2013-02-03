@@ -9,7 +9,7 @@ the main controller created is fluidTextureViewerCtrl#
 
 with the attributes:
 
-* [translate] the only transformation available, just so you can offset the
+* *translate* the only transformation available, just so you can offset the
 position of the viewer in space to put it where it's more convenient for you.
 
 * [display Fluid Viewer] hide/display the viewer (fluid)
@@ -48,17 +48,17 @@ space values.
 then all the default values used by the viewer when the view of a parameter is
 disabled
 
-## Main Function to call?
-
-FTV_createFluidTextureViewer( fluid )
-
-## Usage
+## Usage in Maya
 
 * select a fluid then copy/paste this into a Maya python script editor and
 execute it.
 
 * put the script into a python script folder that Maya know, then use an import
 command to use the script and call the main function with appropriate parameters.
+
+## Main Function to call?
+
+FTV_createFluidTextureViewer( fluid )
 
 ## Contact
 If you find bugs, or want something added to this script feel free to contact me
