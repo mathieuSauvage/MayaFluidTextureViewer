@@ -51,12 +51,13 @@ disabled
 ## Why?
 
 I found it often difficult to visualize the texture of a fluid in Maya and this script
-try to give you an idea of it by creating another fluid focused only on the texture. And you can also
-disable some parameters if you want to clearly animate some others without changing anything
-on the source fluid. For example if you want to see the effect of your translation
-animation of the texture origin but you have at the same time a strong implode that distort everything : you just disable
-implode in the viewer and you can see clearly your origin animation. You can translate the viewer fluid, it
-will translate the texture slice correctly so you are not stuck with a visualization of the center of your fluid
+try to give you an idea of it by creating another fluid focused only on the texture.
+
+And you can also disable some parameters if you want to clearly animate some others without changing anything
+on the source fluid. For example if you want to see the effect of your translation animation of the texture origin but you have at the same time a strong implode that distort everything : you just disable
+implode in the viewer and you can see clearly your origin animation.
+
+You can translate the viewer fluid (the fluid object), it will translate the texture slice correctly so you are not stuck with a visualization of the center of your fluid
 
 ## Usage in Maya
 
@@ -65,6 +66,11 @@ will translate the texture slice correctly so you are not stuck with a visualiza
 execute it.
 * put the script into a python script folder which path is known by Maya, then use an import
 command to use the script and call the main function with appropriate parameters.
+
+## Intented way to use it
+
+After you cached the source fluid then you focus on the texture animation by playblasting the viewer.
+
 
 ## Main function to call?
 
