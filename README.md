@@ -2,15 +2,15 @@
 
 This is a Maya python script that generate a rig to view the texture parameters
 from a fluid.
-All the Rig will exist under a group named "fluidTextureVizualiser#" in the world.
+All the Rig will exist under a group named *fluidTextureViewer#* in the world.
 So deleting this group will delete the entire rig.
 
-the main controller created is fluidTextureViewerCtrl#
+the main controller created is *fluidTextureViewerCtrl#*
 
 with the attributes:
 
 * **translate** the only transformation available, just so you can offset the
-position of the viewer in space to put it where it's more convenient for you.
+position of the viewer in space to put it in a convenient place.
 
 * **display Fluid Viewer** hide/display the viewer (fluid)
 
@@ -45,7 +45,7 @@ space values.
 will be limited to the plan of the slice. If "on" then the viewer show the full
 space values.
 
-* then after come all the default values used by the viewer when the view of a parameter is
+* after that come all the default values used by the viewer when the view of a parameter is
 disabled
 
 ## Usage in Maya
