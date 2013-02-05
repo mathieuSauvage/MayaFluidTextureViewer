@@ -22,7 +22,8 @@ execute it.
 command to use the script and call the main function with appropriate parameters.  
 ================================================================================
 * TODO:
-maybe add something to force the refresh of the Viewer fluid
+- remove the last expression and replace it with nodes
+- check what's up with the cycles
 ================================================================================
 '''
 
@@ -400,6 +401,43 @@ def FTV_setupMainControlAttributes( control, vizuFluidShape ):
 	addMainAttributesToObject(control,True)
 	FTV_multiConnectAutoKeyableNonLocked( control, vizuFluidShape, ['translateX','translateY','translateZ'])
 
+def FTV_setupFluidForceRefresh ( fluidShape,  atts ):
+	import re
+	conns = pm.listConnections( fluidShape+'.voxelQuality', s=True, d=False, p=False  )
+	expr = None
+	text = None
+	attributesTrigger = atts[:] #shallow copy
+
+	if conns is not None and len(conns)>0 and fluidShape.hasAttr('voxelQualityChooser') :
+		if pm.objectType( conns[0], isType='expression' ) == False:
+			raise FTM_msCommandException('The fluid [ '+fluidShape+' ] has an incoming connection in attribute voxelQuality, unable to setup a refresh expression')
+		expr = conns[0]
+		text = pm.expression( expr, q=True, s=True)
+	else:
+		if len(conns)>0:
+			raise FTM_msCommandException('The fluid [ '+fluidShape+' ] has an incoming connection in attribute voxelQuality, unable to setup a refresh expression')
+		if fluidShape.hasAttr('voxelQualityChooser') == False:
+			current = pm.getAttr( fluidShape+'.voxelQuality' )
+			fluidShape.addAttr( 'voxelQualityChooser',  k=True, at='enum', en='faster=1:better=2', dv=current)
+
+	if text is not None:
+		#let's gather the trigger of refresh inside the expression
+		matches = re.findall(r'.*?\$trigs\[size\(\$trigs\)\]=(.*?);', text )  #$triggers[0]=.I[0];
+		for m in matches:
+			if re.match( r'\.I\[[0-9]+?\]', m) is None:
+				attributesTrigger.append(m)
+	text  = '// Fluid display Refresh expression\n'
+	text += '// you can add triggers here but you have to follow the current syntax\n'
+	text += 'float $trigs[];clear $trigs;\n\n'
+	for i in range(len(attributesTrigger)):
+		text += '$trigs[size($trigs)]='+attributesTrigger[i]+';\n'
+	text += '\n//Result\n'
+	text += 'voxelQuality = voxelQualityChooser;\n'
+	if expr :
+		pm.expression( expr, e=True, s=text, o=fluidShape, ae=False)
+	else:
+		pm.expression( s=text, o=fluidShape, ae=False, n='forceFluidDisplayRefreshExpr#')
+
 def FTV_createFluidTextureViewer( fluid ):
 	'''
 	create a viewer of fluid texture
@@ -407,7 +445,7 @@ def FTV_createFluidTextureViewer( fluid ):
 	return the main control, the transform of the fluid of the viewer, the parent group of the rig  
 	'''
 	fluidSourceTrans, fluidSourceShape = FTV_getFluidElements( fluid )
-	vizuFluidTrans  , vizuFluidShape   = FTV_createFluidDummy( fluidSourceTrans+'_textVizu#' )
+	vizuFluidTrans  , vizuFluidShape   = FTV_createFluidDummy( fluidSourceTrans+'_textView#' )
 
 	FTV_setDirectConnectionsFluidToTexture( fluidSourceShape, vizuFluidShape)
 
@@ -428,6 +466,14 @@ def FTV_createFluidTextureViewer( fluid ):
 	FTV_lockAndHide(rootVizuGroup, ['tx','ty','tz','rx','ry','rz','sx','sy','sz','v'])
 
 	pm.parent(fluidSpaceTransform, rootVizuGroup,r=True)
+
+	attsTrigOnFluid = ['slimAxis', 'resoSlim', 'resoMult', 'applyOriginOnSlimAxis', 'applyScaleOnSlimAxis', 'textureRotateX', 'textureRotateY', 'textureRotateZ', 'textureOriginX','textureOriginY','textureOriginZ','textureScaleX','textureScaleY','textureScaleZ', 'implodeCenterX', 'implodeCenterY','implodeCenterZ','implode', 'resolutionW','resolutionH','resolutionD','dimensionsW','dimensionsH','dimensionsD','textureTime']
+	for i in range(len(attsTrigOnFluid)):
+		attsTrigOnFluid[i]= vizuFluidShape+'.'+attsTrigOnFluid[i]
+	attsTrigOnFluid.append( vizuFluidTrans+'.tx')
+	attsTrigOnFluid.append( vizuFluidTrans+'.ty')
+	attsTrigOnFluid.append( vizuFluidTrans+'.tz')
+	FTV_setupFluidForceRefresh( vizuFluidShape, attsTrigOnFluid )
 
 	return mainCtrl, vizuFluidTrans, fluidSpaceTransform
 
