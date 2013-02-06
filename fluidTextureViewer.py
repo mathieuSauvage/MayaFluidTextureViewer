@@ -22,7 +22,7 @@ execute it.
 command to use the script and call the main function with appropriate parameters.  
 ================================================================================
 * TODO:
-- remove the last expression and replace it with nodes
+- still need to offset the resolution of a slim Axis by one if resoSlim and original resolution of Axis are even/uneven
 - check what's up with the cycles
 ================================================================================
 '''
@@ -144,7 +144,50 @@ def FTV_createFluidDummy( name ):
 
 	pm.connectAttr(fldShape+'.textureOpacityPreviewGain',fldShape+'.opacityPreviewGain')
 	# expression that calculate the size and resolution for the vizualizer depending on slimAxis chosen and resolution multiplier etc...
-	pm.expression( s='float $res[];\n\nfloat $size[];\n\n\n\n$res[0] = resoXOrig * resoMult;\n\n$res[1] = resoYOrig * resoMult;\n\n$res[2] = resoZOrig * resoMult;\n\n\n\n$size[0] = sizeXOrig;\n\n$size[1] = sizeYOrig;\n\n$size[2] = sizeZOrig;\n\n\n\n\nfloat $rezoSlim = resoSlim;\nint $slimAxis = slimAxis;\n\nif ( $slimAxis != 3 )\n{\n\tfloat $ratio = $res[$slimAxis] / $size[$slimAxis];\n\tif (($rezoSlim%2) != ( $res[$slimAxis] % 2 ))\n\t\t$rezoSlim += 1;\n\n\t$size[$slimAxis] = $rezoSlim/$ratio;\n\n\t$res[$slimAxis] = $rezoSlim;\n}\n\n\n\nresolutionW = $res[0];\n\nresolutionH = $res[1];\n\nresolutionD = $res[2];\n\n\ndimensionsW = $size[0];\ndimensionsH = $size[1];\ndimensionsD = $size[2];', o=fldShape, ae=True, uc=all)
+
+	#calculate slim Ratio on every axis
+	ratioResoSize = pm.createNode('multiplyDivide',n='ratioResoSize#')
+	pm.setAttr( ratioResoSize+'.operation', 2 )
+	pm.connectAttr( fldShape+'.resoXOrig', ratioResoSize+'.input1X' )
+	pm.connectAttr( fldShape+'.resoYOrig', ratioResoSize+'.input1Y' )
+	pm.connectAttr( fldShape+'.resoZOrig', ratioResoSize+'.input1Z' )
+	pm.connectAttr( fldShape+'.sizeXOrig', ratioResoSize+'.input2X' )
+	pm.connectAttr( fldShape+'.sizeYOrig', ratioResoSize+'.input2Y' )
+	pm.connectAttr( fldShape+'.sizeZOrig', ratioResoSize+'.input2Z' )
+
+	dividSlimResoByRatio = pm.createNode('multiplyDivide',n='slimAxisRatioToWidth#')
+	pm.setAttr( dividSlimResoByRatio+'.operation', 2 )
+	pm.connectAttr( fldShape+'.resoSlim', dividSlimResoByRatio+'.input1X' )
+	pm.connectAttr( fldShape+'.resoSlim', dividSlimResoByRatio+'.input1Y' )
+	pm.connectAttr( fldShape+'.resoSlim', dividSlimResoByRatio+'.input1Z' )
+	pm.connectAttr( ratioResoSize+'.outputX', dividSlimResoByRatio+'.input2X' )
+	pm.connectAttr( ratioResoSize+'.outputY', dividSlimResoByRatio+'.input2Y' )
+	pm.connectAttr( ratioResoSize+'.outputZ', dividSlimResoByRatio+'.input2Z' )
+
+	outDimX = createSlimAxisTest( 'dimensionX', fldShape+'.slimAxis', 0, dividSlimResoByRatio+'.outputX', fldShape+'.sizeXOrig' )
+	outDimY = createSlimAxisTest( 'dimensionY', fldShape+'.slimAxis', 1, dividSlimResoByRatio+'.outputY', fldShape+'.sizeYOrig' )
+	outDimZ = createSlimAxisTest( 'dimensionZ', fldShape+'.slimAxis', 2, dividSlimResoByRatio+'.outputZ', fldShape+'.sizeZOrig' )
+	pm.connectAttr(outDimX, fldShape+'.dimensionsW')
+	pm.connectAttr(outDimY, fldShape+'.dimensionsH')
+	pm.connectAttr(outDimZ, fldShape+'.dimensionsD')
+
+	outResX = createSlimAxisTest( 'resolutionX', fldShape+'.slimAxis', 0, fldShape+'.resoSlim', fldShape+'.resoXOrig' )
+	outResY = createSlimAxisTest( 'resolutionY', fldShape+'.slimAxis', 1, fldShape+'.resoSlim', fldShape+'.resoYOrig' )
+	outResZ = createSlimAxisTest( 'resolutionZ', fldShape+'.slimAxis', 2, fldShape+'.resoSlim', fldShape+'.resoZOrig' )
+	
+	multResoViewer = pm.createNode('multiplyDivide',n='viewerResolutionMult#')
+	pm.connectAttr( fldShape+'.resoMult', multResoViewer+'.input1X' )
+	pm.connectAttr( fldShape+'.resoMult', multResoViewer+'.input1Y' )
+	pm.connectAttr( fldShape+'.resoMult', multResoViewer+'.input1Z' )
+	pm.connectAttr( outResX, multResoViewer+'.input2X' )
+	pm.connectAttr( outResY, multResoViewer+'.input2Y' )
+	pm.connectAttr( outResZ, multResoViewer+'.input2Z' )
+
+	pm.connectAttr(multResoViewer+'.outputX', fldShape+'.resolutionW')
+	pm.connectAttr(multResoViewer+'.outputY', fldShape+'.resolutionH')
+	pm.connectAttr(multResoViewer+'.outputZ', fldShape+'.resolutionD')
+
+	#pm.expression( s='float $res[];\n\nfloat $size[];\n\n\n\n$res[0] = resoXOrig * resoMult;\n\n$res[1] = resoYOrig * resoMult;\n\n$res[2] = resoZOrig * resoMult;\n\n\n\n$size[0] = sizeXOrig;\n\n$size[1] = sizeYOrig;\n\n$size[2] = sizeZOrig;\n\n\n\n\nfloat $rezoSlim = resoSlim;\nint $slimAxis = slimAxis;\n\nif ( $slimAxis != 3 )\n{\n\tfloat $ratio = $res[$slimAxis] / $size[$slimAxis];\n\tif (($rezoSlim%2) != ( $res[$slimAxis] % 2 ))\n\t\t$rezoSlim += 1;\n\n\t$size[$slimAxis] = $rezoSlim/$ratio;\n\n\t$res[$slimAxis] = $rezoSlim;\n}\n\n\n\nresolutionW = $res[0];\n\nresolutionH = $res[1];\n\nresolutionD = $res[2];\n\n\ndimensionsW = $size[0];\ndimensionsH = $size[1];\ndimensionsD = $size[2];', o=fldShape, ae=True, uc=all)
 	#lock of attributes
 	FTV_lockAndHide(fldTrans, ['rx','ry','rz','sx','sy','sz'])
 
