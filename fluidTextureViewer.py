@@ -187,7 +187,6 @@ def FTV_createFluidDummy( name ):
 	pm.connectAttr(multResoViewer+'.outputY', fldShape+'.resolutionH')
 	pm.connectAttr(multResoViewer+'.outputZ', fldShape+'.resolutionD')
 
-	#pm.expression( s='float $res[];\n\nfloat $size[];\n\n\n\n$res[0] = resoXOrig * resoMult;\n\n$res[1] = resoYOrig * resoMult;\n\n$res[2] = resoZOrig * resoMult;\n\n\n\n$size[0] = sizeXOrig;\n\n$size[1] = sizeYOrig;\n\n$size[2] = sizeZOrig;\n\n\n\n\nfloat $rezoSlim = resoSlim;\nint $slimAxis = slimAxis;\n\nif ( $slimAxis != 3 )\n{\n\tfloat $ratio = $res[$slimAxis] / $size[$slimAxis];\n\tif (($rezoSlim%2) != ( $res[$slimAxis] % 2 ))\n\t\t$rezoSlim += 1;\n\n\t$size[$slimAxis] = $rezoSlim/$ratio;\n\n\t$res[$slimAxis] = $rezoSlim;\n}\n\n\n\nresolutionW = $res[0];\n\nresolutionH = $res[1];\n\nresolutionD = $res[2];\n\n\ndimensionsW = $size[0];\ndimensionsH = $size[1];\ndimensionsD = $size[2];', o=fldShape, ae=True, uc=all)
 	#lock of attributes
 	FTV_lockAndHide(fldTrans, ['rx','ry','rz','sx','sy','sz'])
 
@@ -251,10 +250,11 @@ def FTV_createMainFluidTextViewControl( vizuFluidTrans, vizuFluidShape, fluidSpa
 	cubeShape = FTV_createTransformedGeometry(cube,'local', 'create',grpDummyTransform)
 	pm.setAttr(cubeShape+'.template',True)
 	allCubeShapes = pm.listRelatives(cube,s=True)
-	pm.parent(allCubeShapes, circle, add=True, s=True)
+	parentShapeRes = pm.parent(allCubeShapes, circle, add=True, s=True)
+
 	pm.delete(cube)
-	pm.rename( allCubeShapes[0],'BBFluidShapeSrc#' )
-	retShape = pm.rename( allCubeShapes[1],'BBFluidShape#' )
+	pm.rename( parentShapeRes[0],'BBFluidShapeSrc#' )
+	retShape = pm.rename( parentShapeRes[1],'BBFluidShape#' )
 
 	FTV_lockAndHide(circle[0], ['rx','ry','rz','sx','sy','sz','v'])
 	pm.parent(grpDummyTransform,fluidSpaceTransform,r=True)
