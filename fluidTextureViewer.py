@@ -54,7 +54,7 @@ def FTV_getFluidElements( fluid ):
 
 	fldTrs = None
 	fldShp = None
-	
+
 	if pm.nodeType(fluid)== 'transform':
 		childs = pm.listRelatives(s=True)
 		if len(childs)>0 and pm.nodeType(childs[0]) == 'fluidShape' :
@@ -508,7 +508,7 @@ def FTV_createFluidTextureViewer( fluid ):
 	pm.parent(vizuFluidTrans,gpFluidVizuParent,r=True)
 
 	rootVizuGroup = pm.group(em=True,n='fluidTextureViewer#')
-	FTV_lockAndHide(rootVizuGroup, ['tx','ty','tz','rx','ry','rz','sx','sy','sz','v'])
+	FTV_lockAndHide(rootVizuGroup, ['tx','ty','tz','rx','ry','rz','sx','sy','sz'])
 
 	pm.parent(fluidSpaceTransform, rootVizuGroup,r=True)
 	pm.parent(grpSystemIn, rootVizuGroup,r=True)
