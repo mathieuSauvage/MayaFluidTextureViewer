@@ -12,8 +12,8 @@ https://github.com/mathieuSauvage/MayaFluidTextureViewer.git
 FTV_createFluidTextureViewer( fluid )
 ================================================================================
 * DESCRIPTION:
-This is a Maya python script that generate a rig to view the texture parameters
-from a fluid. Please see the full description at the INTERNET SOURCE.
+This is a Maya python script that generate a rig to view the texture from a
+fluid. Please see the full description at the INTERNET SOURCE.
 ================================================================================
 * USAGE:
 - select a fluid then copy/paste this into a Maya python script editor and
@@ -22,8 +22,9 @@ execute it.
 command to use the script and call the main function with appropriate parameters.  
 ================================================================================
 * TODO:
-- (MAYBE NOT RELEVANT) still need to offset the resolution of a slim Axis by one if resoSlim and original resolution of Axis are even/uneven
-- check what's up with the cycles
+- [MAYBE NOT NEEDED] still need to offset the resolution of a slim Axis by one
+  if resoSlim and original resolution of Axis are even/uneven
+- check what's up with the cycles (seems more like a Maya issue...)
 ================================================================================
 '''
 
@@ -36,8 +37,8 @@ class FTV_msCommandException(Exception):
     def __str__(self):
         return self.message
 
-# connect every keyable and non locked attribute of src to dest (basically connect parameters from control)
 def FTV_multiConnectAutoKeyableNonLocked(src, dest, attsExcept):
+	'''connect every keyable and non locked attribute of src to dest (basically connect parameters from control)'''
 	atts = pm.listAttr(src, k=True, u=True)
 	for a in atts:
 		if a in attsExcept:
@@ -45,10 +46,13 @@ def FTV_multiConnectAutoKeyableNonLocked(src, dest, attsExcept):
 		pm.connectAttr(src+'.'+a, dest+'.'+a)
 
 def FTV_lockAndHide( obj, atts, keyable=False ):
+	'''lock and hide (if keyable is set to False) the list of attribute atts on objec obj'''
 	for att in atts:
 		pm.setAttr(obj+'.'+att, lock=True, k=keyable)
 
 def FTV_getFluidElements( fluid ):
+	'''this function consider the type of parameter fluid to not be exactly known but output anyway the fluid Transform and the fluid Shape'''
+
 	if fluid is None:
 		raise FTV_msCommandException('Please select a Fluid')
 
@@ -73,8 +77,8 @@ def FTV_getFluidElements( fluid ):
 		raise FTV_msCommandException('selection is invalid, you must select a fluid')
 	return (fldTrs,fldShp)
 
-# the main attributes are attributes that will be keyable on the controller
 def addMainAttributesToObject( obj, keyable ):
+	''' the main attributes are attributes that will be keyable on the controller '''
 	line = '-------------'
 	obj.addAttr('display',nn=line+' [display] ', k=keyable, at='enum', en=line+':')
 	pm.setAttr(obj+'.display',l=True)
@@ -92,8 +96,8 @@ def addMainAttributesToObject( obj, keyable ):
 	obj.addAttr('slimAxis', k=keyable, at='enum', en='XAxis:YAxis:ZAxis:None:')
 	obj.addAttr('resoSlim', k=keyable,dv=3.0)
 	obj.addAttr('resoMult', k=keyable,dv=1.0,min=.001)
-	obj.addAttr('applyOriginOnSlimAxis', k=keyable,at='bool', dv=False)
-	obj.addAttr('applyScaleOnSlimAxis', k=keyable, at='bool', dv=False)
+	obj.addAttr('applyOriginOnSlimAxis', k=keyable,at='bool', dv=True)
+	obj.addAttr('applyScaleOnSlimAxis', k=keyable, at='bool', dv=True)
 	obj.addAttr('defautValues', nn=line+' [default Values if disable] ', k=keyable, at='enum', en=line+':')
 	pm.setAttr(obj+'.defautValues',l=True)
 	obj.addAttr('textureDefaultScaleX', k=keyable, dv=1.0)
@@ -109,11 +113,12 @@ def addMainAttributesToObject( obj, keyable ):
 	obj.addAttr('defaultTextureTime',k=keyable, dv=0.0)
 
 def FTV_createSystemInputsGrp( sourceFluidShape ):
+	''' create the group that gather alls inputs for the rig, inputs from controller, inputs from source fluid etc...'''
 	inGp = pm.group(em=True, n='systemInputs#')
 	#add the control Inputs
 	addMainAttributesToObject(inGp, False)
 
-	# add attributes from source fluids that will be direct ipnuts
+	# add attributes from source fluids that will be direct inputs
 	atts = ['resolutionW','resolutionH','resolutionD','dimensionsW','dimensionsH','dimensionsD', 'textureRotateX','textureRotateY','textureRotateZ', 'textureScaleX', 'textureScaleY','textureScaleZ','textureOriginX','textureOriginY','textureOriginZ','implode','implodeCenterX','implodeCenterY','implodeCenterZ','textureTime','textureType','invertTexture','amplitude','ratio','threshold','depthMax','frequency','frequencyRatio','inflection','billowDensity','spottyness','sizeRand','randomness','falloff','numWaves' ]
 	for a in atts :
 		inGp.addAttr( a, k=False )
@@ -123,7 +128,8 @@ def FTV_createSystemInputsGrp( sourceFluidShape ):
 
 	return inGp
 
-def FTV_createFluidDummy( name, inputsGrp ):
+def FTV_createViewerFluid( name, inputsGrp ):
+	''' create the fluid that will display the texture, a simple fluid with nothing dynamic '''
 	fldShape = pm.createNode('fluidShape')
 	par = pm.listRelatives(fldShape, p=True)
 	fldTrans = pm.rename( par[0], name) # we rename after because we can't do a proper naming in the createNode of a fluidshape
@@ -207,14 +213,17 @@ def FTV_createFluidDummy( name, inputsGrp ):
 	return fldTrans,fldShape
 
 def FTV_generateFluidTransformSpaceGrp( name, fluidSourceData):
+	''' return a group that is fully constrained by fluidSourceData'''
 	fluidSpaceTransform = pm.group( em=True, n=name )
 	pm.parentConstraint(fluidSourceData[0], fluidSpaceTransform)
 	pm.scaleConstraint(fluidSourceData[0], fluidSpaceTransform)
 	FTV_lockAndHide(fluidSpaceTransform, ['v'])
-
 	return fluidSpaceTransform
 
 def FTV_createTransformedGeometry( objSrc, outShapeAtt, inShapeAtt, sourceTransform ):
+	'''given a objSrc, duplicate its shape, then add a node to transform the original shape and output to the duplicated
+	one. The shape can be a nurbs or a mesh so we specify the attributes to connect to the transform node with
+	outShapeAtt and inShapeAtt and the appplies transformation is going to be the same as the node(group) sourceTransform'''
 	shps = pm.listRelatives(objSrc, s=True)
 	srcShape = shps[0]
 
@@ -233,6 +242,7 @@ def FTV_createTransformedGeometry( objSrc, outShapeAtt, inShapeAtt, sourceTransf
 	return destShape
 
 def FTV_createMainFluidTextViewControl( inputsGrp , fluidSpaceTransform):
+	''' creation of the main control for the viewer'''
 	circle = pm.circle( n='fluidTextureViewerCtrl#', c=(0,0,0), nr=(0,1,0), sw=360, r=1, ut=False,s=8, ch=False )
 	pm.parent(circle[0],fluidSpaceTransform,r=True)
 
@@ -268,6 +278,7 @@ def FTV_createMainFluidTextViewControl( inputsGrp , fluidSpaceTransform):
 	return circle[0], retShape
 
 def FTV_createValueToggle( attributeView, offAttributes, onAttributes):
+	''' create a condition node if attributeView is True then output onAttributes else output offAttributes''' 
 	parts = attributeView.split('.')
 	condOnOff = pm.createNode('condition',n=parts[1]+'ValuesOnOff#')
 	pm.connectAttr(attributeView, condOnOff+'.firstTerm')
@@ -285,6 +296,7 @@ def FTV_createValueToggle( attributeView, offAttributes, onAttributes):
 	return condOnOff+'.outColorR'
 
 def createSlimAxisTest( name, choosenAxisAtt, axisNum, attIfAxis, attIfNotAxis ):
+	''' create a condition : if choosenAxisAtt == axisNum then attIfAxis else attIfNotAxis  '''
 	condSlimAxisIsAxisNum = pm.createNode('condition',n=name+'#') #translateValueIfSlimAxisX
 	pm.connectAttr(choosenAxisAtt, condSlimAxisIsAxisNum+'.firstTerm')
 	pm.setAttr( condSlimAxisIsAxisNum+'.secondTerm',axisNum)
@@ -293,6 +305,8 @@ def createSlimAxisTest( name, choosenAxisAtt, axisNum, attIfAxis, attIfNotAxis )
 	return condSlimAxisIsAxisNum+'.outColorR'
 
 def FTV_createValueVectorWithSlimCond( transformationName, slimAxisChooserAtt, attSlimAxisOnOff, sourceValues, defaultValues, doPutDefaultOnAxis  ):
+	'''create a vector which should ouput values of sourceValues but if slimAxisChooserAtt is not 4 (No Axis slim)
+	and attSlimAxisOnOff is True then the corresponding Axis value will be picked from defaultValues'''
 	condIsSlim = pm.createNode('condition',n='ifUseTexture'+transformationName+'OnSlimAxisCond#')
 	# if attSlimAxisOnOff is On then it is normal
 	# slimAxisOffVectorBuild is a vector, 1 means normal value, 0 means default
@@ -314,7 +328,10 @@ def FTV_createValueVectorWithSlimCond( transformationName, slimAxisChooserAtt, a
 
 
 def FTV_setupTextureSpacesAndAttributes(vizuFluidTrans, vizuFluidShape, inputsGrp):
-#to convert fluid texture values to 3D space, we need to multiply them by 80/freq
+	'''this will setup the 3D spaces where the textures values are matching 3D space
+	the base group, for example, is just the conversion multiplier, 80/freq
+	we need this in order to make some space transformations and ouput back to the viewer
+	texture parameters'''
 	gpTextureSpace = pm.group(em=True, n='textureSpace#')
 
 	multTextSpaceScale = pm.createNode('multiplyDivide',n='textureTo3DSpaceConstantConvert#')
@@ -448,6 +465,7 @@ def FTV_setupTextureSpacesAndAttributes(vizuFluidTrans, vizuFluidShape, inputsGr
 	return gpTextureSpace, gpRotateTextureVizualizer, gpImplodeSpace
 
 def FTV_setupFluidForceRefresh ( fluidShape,  atts ):
+	''' a special expression to force the refresh of the fluid anytime we modify an input'''
 	import re
 	conns = pm.listConnections( fluidShape+'.voxelQuality', s=True, d=False, p=False  )
 	expr = None
@@ -482,7 +500,7 @@ def FTV_setupFluidForceRefresh ( fluidShape,  atts ):
 	if expr :
 		pm.expression( expr, e=True, s=text, o=fluidShape, ae=False)
 	else:
-		pm.expression( s=text, o=fluidShape, ae=False, n='forceFluidDisplayRefreshExpr#')
+		pm.expression( s=text, o=fluidShape, ae=True, n='forceFluidDisplayRefreshExpr#')
 
 def FTV_createFluidTextureViewer( fluid ):
 	'''
@@ -495,7 +513,7 @@ def FTV_createFluidTextureViewer( fluid ):
 
 	grpSystemIn = FTV_createSystemInputsGrp( fluidSourceShape )
 	mainCtrl, bbNurbsCubeShape = FTV_createMainFluidTextViewControl( grpSystemIn, fluidSpaceTransform )
-	vizuFluidTrans  , vizuFluidShape   = FTV_createFluidDummy( fluidSourceTrans+'_textView#',grpSystemIn )
+	vizuFluidTrans  , vizuFluidShape   = FTV_createViewerFluid( fluidSourceTrans+'_textView#',grpSystemIn )
 
 	pm.connectAttr( mainCtrl+'.displayFluidBounding',bbNurbsCubeShape+'.visibility' )
 	pm.connectAttr( mainCtrl+'.displayFluidViewer',vizuFluidTrans+'.visibility' )
