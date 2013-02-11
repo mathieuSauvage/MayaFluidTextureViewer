@@ -1,6 +1,6 @@
 # Fluid Texture Viewer version 1.0
 
-This is a Maya python script that generate a rig to view the texture parameters
+This is a Maya python script that generate a rig to view the texture
 of a fluid.
 All the Rig will exist under a group named *fluidTextureViewer#* in the world.
 So deleting this group will delete the entire rig.
@@ -20,7 +20,7 @@ position of the viewer in space to put it in a convenient place.
 * **view texture rotate**, **view texture scale**, **view texture origin**, **view implode**, 
 **view texture time**
 for all these parameters, if "on" then the source fluid texture parameter will
-be used by the viewer. if "off" then the viewer will use the corresponding
+be used by the viewer. if "off" then the viewer will display the corresponding
 default value.
 
 * **texture gain** the viewer fluid texture gains (opacity)
@@ -48,16 +48,20 @@ space values.
 * after that come all the default values used by the viewer when the view of a parameter is
 disabled
 
+Also on the fluid object of the viewer *(source fluid name)_textView#*
+
+You can use the translate of the fluid transform of the viewer to translate
+the texture slice in texture space. This way you are not stuck with a visualization
+of the center of your fluid
+
 ## Why?
 
-I found it often difficult to visualize the texture of a fluid in Maya and this script
-try to provide a solution by creating another fluid focused only on the texture.
+I found it difficult to visualize the texture of a fluid in Maya and this script
+is trying to provide a solution by creating another fluid focused only on the texture.
 
-And you can also disable some parameters if you want to clearly animate some others without changing anything
-on the source fluid. For example if you want to see the effect of your translation animation of the texture origin but you have at the same time a strong implode that distort everything : you just disable
-implode in the viewer and you can see clearly your origin animation.
-
-You can translate the viewer fluid (the fluid object), it will translate the texture slice correctly so you are not stuck with a visualization of the center of your fluid
+You can also toggle some parameters if you want to clearly animate some others without changing anything
+on the source fluid. For example if you want to see the effect of your translation animation of the texture origin but you have at the same time a strong implode that distort everything : you can just disable
+implode in the viewer and you can see clearly your origin animation. (same with texture time etc...)
 
 ## Intented way to use it
 
@@ -71,10 +75,16 @@ execute it.
 * put the script into a python script folder which path is known by Maya, then use an import
 command to use the script and call the main function with appropriate parameters.
 
+This script use Pymel, so if you can't import pymel you are in trouble.
+
 ## Main function to call?
 
 FTV_createFluidTextureViewer( fluid )
 
+## Notes
+on my laptop, the refresh of the fluid is not triggered by Maya until I display the attribute editor
+of the viewer. But once it's done, the viewer refresh correctly when the values of the source fluid change.
+I will try to find a way to avoid this later.
 ## Contact
 feedback? bugs? request?... feel free to contact me
 mathieu@hiddenforest.fr
