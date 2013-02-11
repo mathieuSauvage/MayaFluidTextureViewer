@@ -85,6 +85,12 @@ FTV_createFluidTextureViewer( fluid )
 on my laptop, the refresh of the fluid is not triggered by Maya until I display the attribute editor
 of the viewer. But once it's done, the viewer refresh correctly when the values of the source fluid change.
 I will try to find a way to avoid this later.
+
+Also you will see that the texture rotation of the fluid source make the viewer rotate.
+It may seems a bit weird but actually that was the only way I could make all the transformations
+works together (having the ability the restrict texture scale, translate to a plan, being able to offset
+the slice...). But this way you actually can see the rotation clearly and if you want, you can still disable
+the rotation with the viewer parameters.
 ## Contact
 feedback? bugs? request?... feel free to contact me
 mathieu@hiddenforest.fr
