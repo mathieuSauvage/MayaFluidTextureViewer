@@ -63,7 +63,7 @@ You can also toggle some parameters if you want to clearly animate some others w
 on the source fluid. For example if you want to see the effect of your translation animation of the texture origin but you have at the same time a strong implode that distort everything : you can just disable
 implode in the viewer and you can see clearly your origin animation. (same with texture time etc...)
 
-## Intented way to use it
+## When to use it?
 
 After you cache the source fluid, you can focus on the fluid texture's parameters animation by playblasting the viewer.
 
