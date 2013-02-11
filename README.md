@@ -65,7 +65,7 @@ implode in the viewer and you can see clearly your origin animation. (same with 
 
 ## Intented way to use it
 
-After you cached the source fluid then you can focus on the texture animation of various parameters by playblasting the viewer.
+After you cached the source fluid then you can focus on the fluid texture's parameters animation by playblasting the viewer.
 
 ## Usage in Maya
 
