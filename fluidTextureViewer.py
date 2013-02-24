@@ -474,12 +474,12 @@ def FTV_setupFluidForceRefresh ( fluidShape,  atts ):
 
 	if conns is not None and len(conns)>0 and fluidShape.hasAttr('voxelQualityChooser') :
 		if pm.objectType( conns[0], isType='expression' ) == False:
-			raise FTM_msCommandException('The fluid [ '+fluidShape+' ] has an incoming connection in attribute voxelQuality, unable to setup a refresh expression')
+			raise FTV_msCommandException('The fluid [ '+fluidShape+' ] has an incoming connection in attribute voxelQuality, unable to setup a refresh expression')
 		expr = conns[0]
 		text = pm.expression( expr, q=True, s=True)
 	else:
 		if len(conns)>0:
-			raise FTM_msCommandException('The fluid [ '+fluidShape+' ] has an incoming connection in attribute voxelQuality, unable to setup a refresh expression')
+			raise FTV_msCommandException('The fluid [ '+fluidShape+' ] has an incoming connection in attribute voxelQuality, unable to setup a refresh expression')
 		if fluidShape.hasAttr('voxelQualityChooser') == False:
 			current = pm.getAttr( fluidShape+'.voxelQuality' )
 			fluidShape.addAttr( 'voxelQualityChooser',  k=True, at='enum', en='faster=1:better=2', dv=current)
