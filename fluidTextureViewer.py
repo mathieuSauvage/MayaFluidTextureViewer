@@ -60,14 +60,14 @@ def FTV_getFluidElements( fluid ):
 	fldShp = None
 
 	if pm.nodeType(fluid)== 'transform':
-		childs = pm.listRelatives(s=True)
+		childs = pm.listRelatives(fluid, s=True)
 		if len(childs)>0 and pm.nodeType(childs[0]) == 'fluidShape' :
 			fldTrs = fluid
 			fldShp = childs[0]
 		else :
 			raise FTV_msCommandException('selection is invalid, you must select a fluid')
 	elif pm.nodeType(fluid)== 'fluidShape':
-		par = pm.listRelatives(p=True)
+		par = pm.listRelatives(fluid, p=True)
 		if len(par)>0 and pm.nodeType(par[0]) == 'transform' :
 			fldTrs = par[0]
 			fldShp = fluid
